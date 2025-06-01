@@ -12,7 +12,7 @@ export const SERVER_CONFIG = {
 
 // Database Configuration
 export const DB_CONFIG = {
-  URI: process.env.MONGODB_URI,
+  URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/winsward',
   OPTIONS: {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -23,23 +23,23 @@ export const DB_CONFIG = {
 
 // JWT Configuration
 export const JWT_CONFIG = {
-  SECRET: process.env.JWT_SECRET,
+  SECRET: process.env.JWT_SECRET || 'your_jwt_secret_key_here',
   EXPIRE: process.env.JWT_EXPIRE || '30d',
   COOKIE_EXPIRE: parseInt(process.env.JWT_COOKIE_EXPIRE) || 30
 };
 
 // Cloudinary Configuration
 export const CLOUDINARY_CONFIG = {
-  CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
-  API_KEY: process.env.CLOUDINARY_API_KEY,
-  API_SECRET: process.env.CLOUDINARY_API_SECRET
+  CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || 'your_cloud_name',
+  API_KEY: process.env.CLOUDINARY_API_KEY || 'your_api_key',
+  API_SECRET: process.env.CLOUDINARY_API_SECRET || 'your_api_secret'
 };
 
 // SMS Configuration
 export const SMS_CONFIG = {
-  ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
-  AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
-  PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER
+  ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || 'your_account_sid',
+  AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || 'your_auth_token',
+  PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || 'your_phone_number'
 };
 
 // Rate Limiting Configuration
@@ -74,24 +74,26 @@ export const CACHE_CONFIG = {
 
 // Admin Configuration
 export const ADMIN_CONFIG = {
-  EMAIL: process.env.ADMIN_EMAIL,
-  PHONE: process.env.ADMIN_PHONE
+  EMAIL: process.env.ADMIN_EMAIL || 'admin@winsward.com',
+  PHONE: process.env.ADMIN_PHONE || '233123456789'
 };
 
-// Validate required environment variables
-const requiredEnvVars = [
-  'MONGODB_URI',
-  'JWT_SECRET',
-  'CLOUDINARY_CLOUD_NAME',
-  'CLOUDINARY_API_KEY',
-  'CLOUDINARY_API_SECRET',
-  'TWILIO_ACCOUNT_SID',
-  'TWILIO_AUTH_TOKEN',
-  'TWILIO_PHONE_NUMBER'
-];
+// Only validate required environment variables in production
+if (process.env.NODE_ENV === 'production') {
+  const requiredEnvVars = [
+    'MONGODB_URI',
+    'JWT_SECRET',
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_AUTH_TOKEN',
+    'TWILIO_PHONE_NUMBER'
+  ];
 
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-if (missingEnvVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  if (missingEnvVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  }
 } 

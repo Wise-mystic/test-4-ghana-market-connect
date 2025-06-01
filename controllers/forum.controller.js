@@ -151,8 +151,8 @@ export const deleteForum = async (req, res) => {
   }
 };
 
-// Like/Unlike forum post
-export const toggleLike = async (req, res) => {
+// Like forum post
+export const likeForum = async (req, res) => {
   try {
     const forum = await Forum.findById(req.params.id);
 
@@ -163,27 +163,66 @@ export const toggleLike = async (req, res) => {
       });
     }
 
-    const likeIndex = forum.likes.indexOf(req.user.id);
-
-    if (likeIndex === -1) {
-      // Like the post
-      forum.likes.push(req.user.id);
-    } else {
-      // Unlike the post
-      forum.likes.splice(likeIndex, 1);
+    // Check if user already liked the post
+    if (forum.likes.includes(req.user.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already liked this post'
+      });
     }
 
+    // Add user to likes array
+    forum.likes.push(req.user.id);
     await forum.save();
 
     res.json({
       success: true,
-      message: likeIndex === -1 ? 'Post liked' : 'Post unliked',
+      message: 'Post liked successfully',
       data: { likes: forum.likes.length }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error toggling like',
+      message: 'Error liking post',
+      error: error.message
+    });
+  }
+};
+
+// Unlike forum post
+export const unlikeForum = async (req, res) => {
+  try {
+    const forum = await Forum.findById(req.params.id);
+
+    if (!forum) {
+      return res.status(404).json({
+        success: false,
+        message: 'Forum post not found'
+      });
+    }
+
+    // Check if user has liked the post
+    const likeIndex = forum.likes.indexOf(req.user.id);
+    if (likeIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have not liked this post'
+      });
+    }
+
+    // Remove user from likes array
+    forum.likes.splice(likeIndex, 1);
+    await forum.save();
+
+    res.json({
+      success: true,
+      message: 'Post unliked successfully',
+      data: { likes: forum.likes.length }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error unliking post',
       error: error.message
     });
   }
@@ -234,6 +273,27 @@ export const reportForum = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error reporting post',
+      error: error.message
+    });
+  }
+};
+
+// Get forums by category
+export const getForumsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const forums = await Forum.find({ category })
+      .populate('author', 'name role')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: { forums }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching forums by category',
       error: error.message
     });
   }

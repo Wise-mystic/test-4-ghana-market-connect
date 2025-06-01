@@ -4,8 +4,7 @@ import {
   getReportedContent,
   handleReportedContent
 } from '../controllers/admin.controller.js';
-import { authenticate } from '../middleware/auth.middleware.js';
-import { authorize } from '../middleware/authorize.middleware.js';
+import { authenticate, authorize } from '../middlewares/auth.js';
 
 const router = express.Router();
 
@@ -13,11 +12,9 @@ const router = express.Router();
 router.use(authenticate);
 router.use(authorize('admin'));
 
-// Dashboard routes
+// Admin routes
 router.get('/dashboard', getDashboardOverview);
-
-// Content moderation routes
 router.get('/reported-content', getReportedContent);
-router.post('/reported-content/:id', handleReportedContent);
+router.put('/reported-content/:id', handleReportedContent);
 
 export default router; 

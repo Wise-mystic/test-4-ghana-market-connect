@@ -12,11 +12,18 @@ import { updateUserSchema } from '../validators/user.schema.js';
 
 const router = express.Router();
 
+// Public routes
+router.get('/role/:role', getUsersByRole);
+
 // Protected routes
-router.get('/:id', authenticate, getUserById);
-router.put('/:id', authenticate, validateRequest(updateUserSchema), updateUser);
-router.delete('/:id', authenticate, authorize('admin'), deleteUser);
-router.get('/role/:role', authenticate, getUsersByRole);
-router.get('/', authenticate, authorize('admin'), getAllUsers);
+router.use(authenticate);
+
+// User profile routes
+router.get('/:id', getUserById);
+router.put('/:id', validateRequest(updateUserSchema), updateUser);
+
+// Admin only routes
+router.get('/', authorize('admin'), getAllUsers);
+router.delete('/:id', authorize('admin'), deleteUser);
 
 export default router; 

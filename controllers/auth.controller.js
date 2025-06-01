@@ -112,6 +112,7 @@ export const login = async (req, res) => {
 export const requestOTP = async (req, res) => {
   try {
     const { phone } = req.body;
+    console.log('Requesting OTP for phone:', phone);
 
     const user = await User.findOne({ phone });
     if (!user) {
@@ -129,6 +130,10 @@ export const requestOTP = async (req, res) => {
       expiresAt: otpExpiry
     };
     await user.save();
+    console.log('OTP saved for user:', {
+      phone: user.phone,
+      otp: user.otp
+    });
 
     // TODO: Integrate with SMS service to send OTP
     console.log(`OTP for ${phone}: ${otp}`);
@@ -142,6 +147,7 @@ export const requestOTP = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Error in requestOTP:', error);
     res.status(500).json({
       success: false,
       message: 'Error sending OTP',
@@ -205,6 +211,7 @@ export const verifyOTP = async (req, res) => {
 export const resetPIN = async (req, res) => {
   try {
     const { phone, newPin, otp } = req.body;
+    console.log('Attempting PIN reset for phone:', phone);
 
     const user = await User.findOne({ phone });
     if (!user) {
@@ -213,6 +220,8 @@ export const resetPIN = async (req, res) => {
         message: 'User not found'
       });
     }
+
+    console.log('User found, current OTP state:', user.otp);
 
     if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
       return res.status(400).json({
@@ -235,19 +244,19 @@ export const resetPIN = async (req, res) => {
       });
     }
 
-    // Hash new PIN
-    const hashedPin = await bcrypt.hash(newPin, 10);
-
     // Update PIN and clear OTP
-    user.pin = hashedPin;
+    // The PIN will be hashed by the model's pre-save hook
+    user.pin = newPin;
     user.otp = undefined;
     await user.save();
+    console.log('PIN reset successful for user:', phone);
 
     res.json({
       success: true,
       message: 'PIN reset successfully'
     });
   } catch (error) {
+    console.error('Error in resetPIN:', error);
     res.status(500).json({
       success: false,
       message: 'Error resetting PIN',

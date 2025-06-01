@@ -20,6 +20,27 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
+// Get products by category
+export const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const products = await Product.find({ category })
+      .populate('user', 'name phone location')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: { products }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching products by category',
+      error: error.message
+    });
+  }
+};
+
 // Get single product
 export const getProductById = async (req, res) => {
   try {
