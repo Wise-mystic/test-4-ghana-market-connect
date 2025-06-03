@@ -1,6 +1,5 @@
 // product schema defining the product document structure
 import mongoose from 'mongoose';
-import normalize from 'normalize-mongoose';
 
 const productSchema = new mongoose.Schema({
   name: {
@@ -56,7 +55,5 @@ const productSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-productSchema.plugin(normalize);
 
 export const Product = mongoose.model('Product', productSchema);

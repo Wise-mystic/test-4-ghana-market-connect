@@ -1,7 +1,6 @@
 // Schema for multilingual educational content.
 
 import mongoose from 'mongoose';
-import normalize from 'normalize-mongoose';
 
 const lessonSchema = new mongoose.Schema({
   title: {
@@ -48,8 +47,6 @@ const lessonSchema = new mongoose.Schema({
     default: false
   }
 }, { timestamps: true });
-
-lessonSchema.plugin(normalize);
 
 export const Lesson = mongoose.model('Lesson', lessonSchema);
 

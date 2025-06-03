@@ -1,6 +1,5 @@
 //user schema with role management
 import mongoose from 'mongoose';
-import normalize from 'normalize-mongoose';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
@@ -59,9 +58,6 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-// Add normalize plugin
-userSchema.plugin(normalize);
 
 // Hash PIN before saving
 userSchema.pre('save', async function(next) {

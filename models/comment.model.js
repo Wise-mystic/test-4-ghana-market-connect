@@ -1,6 +1,5 @@
 //To handle comments on the forum
 import mongoose from 'mongoose';
-import normalize from 'normalize-mongoose';
 
 const commentSchema = new mongoose.Schema({
   content: { type: String, required: true },
@@ -28,7 +27,5 @@ const commentSchema = new mongoose.Schema({
   },
   reportReason: String
 }, { timestamps: true });
-
-commentSchema.plugin(normalize);
 
 export const Comment = mongoose.model('Comment', commentSchema);
