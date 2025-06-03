@@ -4,55 +4,72 @@ import normalize from 'normalize-mongoose';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  phone: { 
-    type: String, 
-    required: true, 
+  name: {
+    type: String,
+    required: [true, 'Name is required'],
+    trim: true,
+    minlength: [2, 'Name must be at least 2 characters long'],
+    maxlength: [50, 'Name cannot exceed 50 characters']
+  },
+  phone: {
+    type: String,
+    required: [true, 'Phone number is required'],
     unique: true,
+    trim: true,
+    match: [/^233\d{9}$/, 'Please enter a valid Ghana phone number (233XXXXXXXXX)']
+  },
+  pin: {
+    type: String,
+    required: [true, 'PIN is required'],
     validate: {
       validator: function(v) {
-        return /^233\d{9}$/.test(v); // Ghana phone number format
+        return /^\d{6}$/.test(v);
       },
-      message: props => `${props.value} is not a valid Ghana phone number!`
+      message: 'PIN must be exactly 6 digits'
     }
   },
-  role: { 
-    type: String, 
-    required: true, 
-    enum: ['farmer', 'market_woman', 'admin'] 
+  role: {
+    type: String,
+    required: [true, 'Role is required'],
+    enum: ['market_woman', 'logistics', 'admin', 'farmer'],
+    default: 'farmer'
   },
-  location: { type: String, required: true },
-  preferredLanguage: { 
-    type: String, 
-    required: true, 
-    enum: ['en', 'tw', 'ga', 'ewe'] 
+  location: {
+    type: String,
+    required: [true, 'Location is required'],
+    trim: true
   },
-  pin: { 
-    type: String, 
-    required: true
-  },
-  otp: {
-    code: String,
-    expiresAt: Date
+  preferredLanguage: {
+    type: String,
+    enum: ['en', 'tw', 'ha'],
+    default: 'en'
   },
   isVerified: {
     type: Boolean,
     default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-}, { timestamps: true });
+}, {
+  timestamps: true
+});
+
+// Add normalize plugin
+userSchema.plugin(normalize);
 
 // Hash PIN before saving
 userSchema.pre('save', async function(next) {
+  if (!this.isModified('pin')) return next();
+  
   try {
-    if (!this.isModified('pin')) return next();
-    
-    // Only validate PIN format if it's not already hashed
-    if (!this.pin.startsWith('$2')) {
-      if (!/^\d{6}$/.test(this.pin)) {
-        return next(new Error('PIN must be 6 digits'));
-      }
-      this.pin = await bcrypt.hash(this.pin, 10);
-    }
+    const salt = await bcrypt.genSalt(10);
+    this.pin = await bcrypt.hash(this.pin, salt);
     next();
   } catch (error) {
     next(error);
@@ -61,9 +78,13 @@ userSchema.pre('save', async function(next) {
 
 // Compare PIN method
 userSchema.methods.comparePin = async function(candidatePin) {
-  return await bcrypt.compare(candidatePin, this.pin);
+  try {
+    return await bcrypt.compare(candidatePin, this.pin);
+  } catch (error) {
+    throw error;
+  }
 };
 
-userSchema.plugin(normalize);
-export default mongoose.model('User', userSchema);
+// Create and export the User model
+export const User = mongoose.model('User', userSchema);
 

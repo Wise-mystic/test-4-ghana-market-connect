@@ -1,6 +1,6 @@
-import Comment from '../models/comment.model.js';
-import Forum from '../models/forum.model.js';
-import Notification from '../models/notification.model.js';
+import { Comment } from '../models/comment.model.js';
+import { Forum } from '../models/forum.model.js';
+import { Notification } from '../models/notification.model.js';
 import { sendNotification, NotificationType } from '../services/socket.service.js';
 
 // Get comments for a forum post

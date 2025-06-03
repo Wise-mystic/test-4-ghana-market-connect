@@ -27,6 +27,4 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ user: 1, createdAt: -1 });
 notificationSchema.index({ read: 1 });
 
-const Notification = mongoose.model('Notification', notificationSchema);
-
-export default Notification; 
+export const Notification = mongoose.model('Notification', notificationSchema); 

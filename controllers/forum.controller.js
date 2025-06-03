@@ -1,5 +1,5 @@
-import Forum from '../models/forum.model.js';
-import Notification from '../models/notification.model.js';
+import { Forum } from '../models/forum.model.js';
+import { Notification } from '../models/notification.model.js';
 import { sendAdminNotification, NotificationType } from '../services/socket.service.js';
 
 // Get all forum posts

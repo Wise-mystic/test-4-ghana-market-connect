@@ -1,5 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { CLOUDINARY_CONFIG } from './env.js';
+import multer from 'multer';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -8,66 +10,52 @@ cloudinary.config({
   api_secret: CLOUDINARY_CONFIG.API_SECRET
 });
 
-// Only import multer and storage if we're not in development mode
-let upload, deleteFile, getFileUrl, uploadFile;
+// Configure storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'winsward',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    transformation: [{ width: 1000, height: 1000, crop: 'limit' }],
+    resource_type: 'auto'
+  }
+});
 
-if (process.env.NODE_ENV !== 'development') {
-  const { CloudinaryStorage } = await import('multer-storage-cloudinary');
-  const multer = await import('multer');
+// Create multer upload instance
+const upload = multer({ storage: storage });
 
-  // Configure storage
-  const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-      folder: 'winsward',
-      allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
-      transformation: [{ width: 1000, height: 1000, crop: 'limit' }],
-      resource_type: 'auto'
-    }
+// Helper function to delete file from Cloudinary
+const deleteFile = async (publicId) => {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result;
+  } catch (error) {
+    console.error('Error deleting file from Cloudinary:', error);
+    throw error;
+  }
+};
+
+// Helper function to get file URL
+const getFileUrl = (publicId, options = {}) => {
+  return cloudinary.url(publicId, {
+    secure: true,
+    ...options
   });
+};
 
-  // Create multer upload instance
-  upload = multer.default({ storage: storage });
-
-  // Helper function to delete file from Cloudinary
-  deleteFile = async (publicId) => {
-    try {
-      const result = await cloudinary.uploader.destroy(publicId);
-      return result;
-    } catch (error) {
-      console.error('Error deleting file from Cloudinary:', error);
-      throw error;
-    }
-  };
-
-  // Helper function to get file URL
-  getFileUrl = (publicId, options = {}) => {
-    return cloudinary.url(publicId, {
-      secure: true,
+// Helper function to upload file directly (without multer)
+const uploadFile = async (file, options = {}) => {
+  try {
+    const result = await cloudinary.uploader.upload(file, {
+      folder: 'winsward',
       ...options
     });
-  };
-
-  // Helper function to upload file directly (without multer)
-  uploadFile = async (file, options = {}) => {
-    try {
-      const result = await cloudinary.uploader.upload(file, {
-        folder: 'winsward',
-        ...options
-      });
-      return result;
-    } catch (error) {
-      console.error('Error uploading file to Cloudinary:', error);
-      throw error;
-    }
-  };
-} else {
-  // Mock functions for development
-  upload = (req, res, next) => next();
-  deleteFile = async () => ({ result: 'ok' });
-  getFileUrl = () => 'https://example.com/mock-image.jpg';
-  uploadFile = async () => ({ url: 'https://example.com/mock-image.jpg' });
-}
+    return result;
+  } catch (error) {
+    console.error('Error uploading file to Cloudinary:', error);
+    throw error;
+  }
+};
 
 export {
   cloudinary,

@@ -3,27 +3,31 @@ import {
   register,
   login,
   getCurrentUser,
-  requestOTP,
-  verifyOTP,
-  resetPIN
+  requestOtp,
+  verifyOtp,
+  requestPinReset,
+  resetPin
 } from '../controllers/auth.controller.js';
 import { authenticate } from '../middlewares/auth.js';
-import { validateRequest } from '../middlewares/validate.js';
 import {
-  registerSchema,
-  loginSchema,
-  otpSchema,
-  resetPinSchema
-} from '../validators/auth.schema.js';
+  validateRegistration,
+  validateLogin,
+  validateOtpRequest,
+  validateOtpVerification,
+  validatePinReset
+} from '../validators/auth.validator.js';
 
 const router = express.Router();
 
 // Public routes
-router.post('/register', validateRequest(registerSchema), register);
-router.post('/login', validateRequest(loginSchema), login);
-router.post('/request-otp', validateRequest(otpSchema), requestOTP);
-router.post('/verify-otp', validateRequest(otpSchema), verifyOTP);
-router.post('/reset-pin', validateRequest(resetPinSchema), resetPIN);
+router.post('/register', validateRegistration, register);
+router.post('/login', validateLogin, login);
+router.post('/request-otp', validateOtpRequest, requestOtp);
+router.post('/verify-otp', validateOtpVerification, verifyOtp);
+
+// PIN reset routes
+router.post('/request-pin-reset', validateOtpRequest, requestPinReset);
+router.post('/reset-pin', validatePinReset, resetPin);
 
 // Protected routes
 router.get('/me', authenticate, getCurrentUser);

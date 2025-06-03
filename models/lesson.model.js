@@ -51,7 +51,7 @@ const lessonSchema = new mongoose.Schema({
 
 lessonSchema.plugin(normalize);
 
-export default mongoose.model('Lesson', lessonSchema);
+export const Lesson = mongoose.model('Lesson', lessonSchema);
 
 
 

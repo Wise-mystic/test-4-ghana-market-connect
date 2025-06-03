@@ -1,7 +1,9 @@
-import User from '../models/user.model.js';
-import Product from '../models/product.model.js';
-import Forum from '../models/forum.model.js';
-import Lesson from '../models/lesson.model.js';
+import { User } from '../models/user.model.js';
+import { Product } from '../models/product.model.js';
+import { Forum } from '../models/forum.model.js';
+import { Lesson } from '../models/lesson.model.js';
+import { generateOTP } from '../utils/otp.js';
+import { sendVerificationSMS } from '../services/email.service.js';
 
 // Get dashboard overview
 export const getDashboardOverview = async (req, res) => {
@@ -120,6 +122,92 @@ export const handleReportedContent = async (req, res) => {
       success: false,
       message: 'Error handling reported content',
       error: error.message
+    });
+  }
+};
+
+export const registerAdmin = async (req, res) => {
+  try {
+    const { name, phone, location, preferredLanguage, pin } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User already exists' 
+      });
+    }
+
+    // Generate verification code
+    const verificationCode = generateOTP();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Create new admin user
+    const admin = new User({
+      name,
+      phone,
+      role: 'admin',
+      location,
+      preferredLanguage,
+      pin,
+      verificationToken: verificationCode,
+      verificationTokenExpires: verificationExpires,
+      isVerified: false
+    });
+
+    await admin.save();
+
+    // Send verification SMS
+    await sendVerificationSMS(admin.phone, verificationCode);
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin registered successfully. Please verify your account with the code sent to your phone.',
+      data: {
+        userId: admin._id
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: 'Error registering admin', 
+      error: error.message 
+    });
+  }
+};
+
+export const verifyAdmin = async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+
+    const admin = await User.findOne({
+      phone,
+      verificationToken: code,
+      verificationTokenExpires: { $gt: Date.now() }
+    });
+
+    if (!admin) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid or expired verification code' 
+      });
+    }
+
+    admin.isVerified = true;
+    admin.verificationToken = undefined;
+    admin.verificationTokenExpires = undefined;
+    await admin.save();
+
+    res.status(200).json({ 
+      success: true,
+      message: 'Admin account verified successfully' 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      message: 'Error verifying admin account', 
+      error: error.message 
     });
   }
 }; 

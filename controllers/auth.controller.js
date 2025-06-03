@@ -1,7 +1,19 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import User from '../models/user.model.js';
-import { generateOTP } from '../utils/otp.js';
+import { User } from '../models/user.model.js';
+import { generateToken } from '../utils/jwt.js';
+import { requestOTP, verifyOTPCode, clearOTP } from '../services/otp.service.js';
+
+// Development fallback for SMS
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+const handleSMSFailure = async (phone, code, type) => {
+  if (isDevelopment) {
+    console.log(`[DEVELOPMENT MODE] ${type} code for ${phone}: ${code}`);
+    return true;
+  }
+  throw new Error(`Failed to send ${type} SMS`);
+};
 
 // Register new user
 export const register = async (req, res) => {
@@ -24,27 +36,23 @@ export const register = async (req, res) => {
       pin,
       role,
       location,
-      preferredLanguage
+      preferredLanguage,
+      isVerified: false
     });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
+    // Generate and send verification OTP
+    const otp = requestOTP(phone);
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User registered successfully. Please verify your account with the code sent to your phone.',
       data: {
         user: {
           id: user._id,
           name: user.name,
           phone: user.phone,
           role: user.role
-        },
-        token
+        }
       }
     });
   } catch (error) {
@@ -80,11 +88,7 @@ export const login = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
+    const token = generateToken(user);
 
     res.json({
       success: true,
@@ -108,12 +112,12 @@ export const login = async (req, res) => {
   }
 };
 
-// Request OTP
-export const requestOTP = async (req, res) => {
+// Request OTP for verification
+export const requestOtp = async (req, res) => {
   try {
     const { phone } = req.body;
-    console.log('Requesting OTP for phone:', phone);
 
+    // Check if user exists
     const user = await User.findOne({ phone });
     if (!user) {
       return res.status(404).json({
@@ -122,83 +126,64 @@ export const requestOTP = async (req, res) => {
       });
     }
 
-    const otp = generateOTP();
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    // Generate and store OTP
+    const otp = requestOTP(phone);
 
-    user.otp = {
-      code: otp,
-      expiresAt: otpExpiry
-    };
-    await user.save();
-    console.log('OTP saved for user:', {
-      phone: user.phone,
-      otp: user.otp
-    });
-
-    // TODO: Integrate with SMS service to send OTP
-    console.log(`OTP for ${phone}: ${otp}`);
-
-    res.json({
+    res.status(200).json({
       success: true,
       message: 'OTP sent successfully',
       data: {
         phone,
-        expiresIn: '5 minutes'
+        expiryMinutes: 10
       }
     });
   } catch (error) {
-    console.error('Error in requestOTP:', error);
+    console.error('Error requesting OTP:', error);
     res.status(500).json({
       success: false,
-      message: 'Error sending OTP',
+      message: 'Error requesting OTP',
       error: error.message
     });
   }
 };
 
 // Verify OTP
-export const verifyOTP = async (req, res) => {
+export const verifyOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
 
-    const user = await User.findOne({ phone });
-    if (!user) {
-      return res.status(404).json({
+    // Verify OTP
+    const isValid = verifyOTPCode(phone, otp);
+    if (!isValid) {
+      return res.status(400).json({
         success: false,
-        message: 'User not found'
+        message: 'Invalid or expired OTP'
       });
     }
 
-    if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
-      return res.status(400).json({
-        success: false,
-        message: 'No OTP requested'
-      });
-    }
-
-    if (user.otp.code !== otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid OTP'
-      });
-    }
-
-    if (new Date() > user.otp.expiresAt) {
-      return res.status(400).json({
-        success: false,
-        message: 'OTP expired'
-      });
-    }
+    // Update user verification status
+    const user = await User.findOneAndUpdate(
+      { phone },
+      { isVerified: true },
+      { new: true }
+    );
 
     // Clear OTP after successful verification
-    user.otp = undefined;
-    await user.save();
+    clearOTP(phone);
 
-    res.json({
+    // Generate JWT token
+    const token = generateToken(user);
+
+    res.status(200).json({
       success: true,
-      message: 'OTP verified successfully'
+      message: 'OTP verified successfully',
+      data: {
+        user,
+        token
+      }
     });
   } catch (error) {
+    console.error('Error verifying OTP:', error);
     res.status(500).json({
       success: false,
       message: 'Error verifying OTP',
@@ -207,12 +192,12 @@ export const verifyOTP = async (req, res) => {
   }
 };
 
-// Reset PIN
-export const resetPIN = async (req, res) => {
+// Request PIN reset
+export const requestPinReset = async (req, res) => {
   try {
-    const { phone, newPin, otp } = req.body;
-    console.log('Attempting PIN reset for phone:', phone);
+    const { phone } = req.body;
 
+    // Check if user exists
     const user = await User.findOne({ phone });
     if (!user) {
       return res.status(404).json({
@@ -221,42 +206,60 @@ export const resetPIN = async (req, res) => {
       });
     }
 
-    console.log('User found, current OTP state:', user.otp);
+    // Generate and store OTP
+    const otp = requestOTP(phone);
 
-    if (!user.otp || !user.otp.code || !user.otp.expiresAt) {
-      return res.status(400).json({
-        success: false,
-        message: 'No OTP requested'
-      });
-    }
-
-    if (user.otp.code !== otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid OTP'
-      });
-    }
-
-    if (new Date() > user.otp.expiresAt) {
-      return res.status(400).json({
-        success: false,
-        message: 'OTP expired'
-      });
-    }
-
-    // Update PIN and clear OTP
-    // The PIN will be hashed by the model's pre-save hook
-    user.pin = newPin;
-    user.otp = undefined;
-    await user.save();
-    console.log('PIN reset successful for user:', phone);
-
-    res.json({
+    res.status(200).json({
       success: true,
-      message: 'PIN reset successfully'
+      message: 'PIN reset OTP sent successfully',
+      data: {
+        phone,
+        expiryMinutes: 10
+      }
     });
   } catch (error) {
-    console.error('Error in resetPIN:', error);
+    console.error('Error requesting PIN reset:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error requesting PIN reset',
+      error: error.message
+    });
+  }
+};
+
+// Reset PIN
+export const resetPin = async (req, res) => {
+  try {
+    const { phone, otp, newPin } = req.body;
+
+    // Verify OTP
+    const isValid = verifyOTPCode(phone, otp);
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Update user PIN
+    const user = await User.findOneAndUpdate(
+      { phone },
+      { pin: newPin },
+      { new: true }
+    );
+
+    // Clear OTP after successful reset
+    clearOTP(phone);
+
+    res.status(200).json({
+      success: true,
+      message: 'PIN reset successfully',
+      data: {
+        user
+      }
+    });
+  } catch (error) {
+    console.error('Error resetting PIN:', error);
     res.status(500).json({
       success: false,
       message: 'Error resetting PIN',
@@ -268,7 +271,7 @@ export const resetPIN = async (req, res) => {
 // Get current user profile
 export const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-pin -otp');
+    const user = await User.findById(req.user.id).select('-pin');
     if (!user) {
       return res.status(404).json({
         success: false,

@@ -30,4 +30,5 @@ const commentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 commentSchema.plugin(normalize);
-export default mongoose.model('Comment', commentSchema);
+
+export const Comment = mongoose.model('Comment', commentSchema);

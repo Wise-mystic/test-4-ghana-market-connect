@@ -3,23 +3,60 @@ import mongoose from 'mongoose';
 import normalize from 'normalize-mongoose';
 
 const productSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String },
-  image: { type: String },
-  price: { type: Number },
-  category: { 
-    type: String, 
-    required: true,
-    enum: ['vegetables', 'fruits', 'grains', 'tubers', 'other']
+  name: {
+    type: String,
+    required: [true, 'Product name is required'],
+    trim: true
   },
-  quantity: { type: Number, required: true },
-  unit: { 
-    type: String, 
-    required: true,
-    enum: ['kg', 'g', 'l', 'ml', 'piece']
+  category: {
+    type: String,
+    required: [true, 'Product category is required'],
+    enum: ['vegetables', 'fruits', 'tubers', 'grains', 'legumes', 'spices', 'herbs']
   },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-}, { timestamps: true });
+  unit: {
+    type: String,
+    required: [true, 'Unit of measurement is required'],
+    enum: ['kg', 'g', 'piece', 'bundle', 'bag']
+  },
+  price: {
+    type: Number,
+    required: [true, 'Price is required'],
+    min: [0, 'Price cannot be negative']
+  },
+  quantity: {
+    type: Number,
+    required: [true, 'Quantity is required'],
+    min: [0, 'Quantity cannot be negative']
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  seller: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Seller is required']
+  },
+  location: {
+    type: String,
+    required: [true, 'Location is required']
+  },
+  isAvailable: {
+    type: Boolean,
+    default: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true
+});
 
 productSchema.plugin(normalize);
-export default mongoose.model('Product', productSchema);
+
+export const Product = mongoose.model('Product', productSchema);

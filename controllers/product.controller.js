@@ -1,10 +1,10 @@
-import Product from '../models/product.model.js';
+import { Product } from '../models/product.model.js';
 
 // Get all products
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate('user', 'name phone location')
+      .populate('seller', 'name phone location')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -25,7 +25,7 @@ export const getProductsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
     const products = await Product.find({ category })
-      .populate('user', 'name phone location')
+      .populate('seller', 'name phone location')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -45,7 +45,7 @@ export const getProductsByCategory = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate('user', 'name phone location');
+      .populate('seller', 'name phone location');
 
     if (!product) {
       return res.status(404).json({
@@ -72,7 +72,7 @@ export const createProduct = async (req, res) => {
   try {
     const product = await Product.create({
       ...req.body,
-      user: req.user.id
+      seller: req.user.id
     });
 
     res.status(201).json({
@@ -102,7 +102,7 @@ export const updateProduct = async (req, res) => {
     }
 
     // Check if user is the owner or an admin
-    if (product.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (product.seller.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this product'
@@ -113,7 +113,7 @@ export const updateProduct = async (req, res) => {
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('user', 'name phone location');
+    ).populate('seller', 'name phone location');
 
     res.json({
       success: true,
@@ -142,7 +142,7 @@ export const deleteProduct = async (req, res) => {
     }
 
     // Check if user is the owner or an admin
-    if (product.user.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (product.seller.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this product'
@@ -167,8 +167,8 @@ export const deleteProduct = async (req, res) => {
 // Get products by user
 export const getProductsByUser = async (req, res) => {
   try {
-    const products = await Product.find({ user: req.params.userId })
-      .populate('user', 'name phone location')
+    const products = await Product.find({ seller: req.params.userId })
+      .populate('seller', 'name phone location')
       .sort({ createdAt: -1 });
 
     res.json({

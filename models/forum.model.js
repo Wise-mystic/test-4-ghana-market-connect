@@ -32,5 +32,6 @@ const forumSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 forumSchema.plugin(normalize);
-export default mongoose.model('Forum', forumSchema);
+
+export const Forum = mongoose.model('Forum', forumSchema);
 

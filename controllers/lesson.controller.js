@@ -1,4 +1,4 @@
-import Lesson from '../models/lesson.model.js';
+import { Lesson } from '../models/lesson.model.js';
 
 // Get all lessons
 export const getAllLessons = async (req, res) => {

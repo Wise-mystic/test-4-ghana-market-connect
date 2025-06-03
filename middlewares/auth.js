@@ -1,50 +1,39 @@
 import jwt from 'jsonwebtoken';
-import { JWT_CONFIG } from '../config/env.js';
-import User from '../models/user.model.js';
+import { verifyToken } from '../utils/jwt.js';
+import { User } from '../models/user.model.js';
 
 // Authentication middleware
 export const authenticate = async (req, res, next) => {
   try {
-    let token;
-
     // Get token from header
-    if (req.headers.authorization?.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: 'No authentication token, access denied'
       });
     }
 
-    try {
-      // Verify token
-      const decoded = jwt.verify(token, JWT_CONFIG.SECRET);
-
-      // Get user from token
-      const user = await User.findById(decoded.id).select('-pin -otp');
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-
-      req.user = user;
-      next();
-    } catch (error) {
+    // Verify token
+    const decoded = verifyToken(token);
+    
+    // Find user
+    const user = await User.findById(decoded.id).select('-pin');
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized to access this route'
+        message: 'User not found'
       });
     }
+
+    // Add user to request
+    req.user = user;
+    next();
   } catch (error) {
-    res.status(500).json({
+    res.status(401).json({
       success: false,
-      message: 'Error authenticating user',
-      error: error.message
+      message: 'Token is invalid or expired'
     });
   }
 };
@@ -73,20 +62,12 @@ export const adminAuth = async (req, res, next) => {
 // Role-based authorization middleware
 export const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Unauthorized - No user found'
-      });
-    }
-
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: 'Forbidden - Insufficient permissions'
+        message: 'You do not have permission to perform this action'
       });
     }
-
     next();
   };
 }; 
