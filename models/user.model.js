@@ -40,7 +40,7 @@ const userSchema = new mongoose.Schema({
   },
   preferredLanguage: {
     type: String,
-    enum: ['en', 'tw', 'ha'],
+    enum: ['en', 'tw', 'ga', 'da', 'ew'],
     default: 'en'
   },
   isVerified: {

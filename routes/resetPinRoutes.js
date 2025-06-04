@@ -1,12 +1,15 @@
 import express from 'express';
-import { initiatePinReset, verifyAndResetPin } from '../controllers/resetPinController.js';
+import { initiatePinReset, verifyOtp, resetPin } from '../controllers/resetPinController.js';
 
 const router = express.Router();
 
-// Route to initiate PIN reset (sends OTP)
+// Step 1: Request PIN Reset
 router.post('/initiate', initiatePinReset);
 
-// Route to verify OTP and reset PIN
-router.post('/verify-and-reset', verifyAndResetPin);
+// Step 2: Verify OTP
+router.post('/verify', verifyOtp);
+
+// Step 3: Reset PIN
+router.post('/reset', resetPin);
 
 export default router; 

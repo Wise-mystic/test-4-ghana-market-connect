@@ -1,9 +1,11 @@
 import OTPService from '../services/otpService.js';
 import { User } from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const otpService = new OTPService();
 
+// Step 1: Request PIN Reset
 export const initiatePinReset = async (req, res) => {
     try {
         const { phoneNumber } = req.body;
@@ -44,33 +46,21 @@ export const initiatePinReset = async (req, res) => {
     }
 };
 
-export const verifyAndResetPin = async (req, res) => {
+// Step 2: Verify OTP
+export const verifyOtp = async (req, res) => {
     try {
-        const { phoneNumber, otp, newPin } = req.body;
+        const { phoneNumber, otp } = req.body;
 
-        // Log the incoming request data (excluding sensitive info)
-        console.log('Reset PIN request received for phone:', phoneNumber);
-
-        if (!phoneNumber || !otp || !newPin) {
+        if (!phoneNumber || !otp) {
             return res.status(400).json({
                 success: false,
-                message: 'Phone number, OTP, and new PIN are required'
-            });
-        }
-
-        // Validate PIN format (must be 6 digits as per schema)
-        if (!/^\d{6}$/.test(newPin)) {
-            return res.status(400).json({
-                success: false,
-                message: 'PIN must be 6 digits'
+                message: 'Phone number and OTP are required'
             });
         }
 
         // Verify OTP
-        console.log('Verifying OTP for phone:', phoneNumber);
         const otpResult = otpService.verifyOTP(phoneNumber, otp);
-        console.log('OTP verification result:', otpResult);
-
+        
         if (!otpResult.success) {
             return res.status(400).json({
                 success: false,
@@ -78,8 +68,76 @@ export const verifyAndResetPin = async (req, res) => {
             });
         }
 
+        // Generate a temporary token for PIN reset
+        const resetToken = jwt.sign(
+            { phone: phoneNumber, purpose: 'pin_reset' },
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'OTP verified successfully. You can now reset your PIN.',
+            data: {
+                resetToken
+            }
+        });
+    } catch (error) {
+        console.error('Error in verifyOtp:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// Step 3: Reset PIN
+export const resetPin = async (req, res) => {
+    try {
+        const { newPin, confirmPin } = req.body;
+        const resetToken = req.headers.authorization?.split(' ')[1];
+
+        if (!resetToken) {
+            return res.status(401).json({
+                success: false,
+                message: 'Reset token is required'
+            });
+        }
+
+        // Verify reset token
+        const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+        if (decoded.purpose !== 'pin_reset') {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid reset token'
+            });
+        }
+
+        if (!newPin || !confirmPin) {
+            return res.status(400).json({
+                success: false,
+                message: 'New PIN and confirm PIN are required'
+            });
+        }
+
+        // Validate PIN format
+        if (!/^\d{6}$/.test(newPin)) {
+            return res.status(400).json({
+                success: false,
+                message: 'PIN must be 6 digits'
+            });
+        }
+
+        // Check if PINs match
+        if (newPin !== confirmPin) {
+            return res.status(400).json({
+                success: false,
+                message: 'PINs do not match'
+            });
+        }
+
         // Find user and update PIN
-        const user = await User.findOne({ phone: phoneNumber });
+        const user = await User.findOne({ phone: decoded.phone });
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -93,10 +151,24 @@ export const verifyAndResetPin = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: 'PIN reset successfully'
+            message: 'PIN reset successfully',
+            data: {
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    phone: user.phone,
+                    role: user.role
+                }
+            }
         });
     } catch (error) {
-        console.error('Error in verifyAndResetPin:', error);
+        console.error('Error in resetPin:', error);
+        if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired reset token'
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Internal server error'

@@ -41,7 +41,7 @@ const registrationSchema = Joi.object({
       'string.empty': 'Location is required'
     }),
   preferredLanguage: Joi.string()
-    .valid('en', 'tw', 'ha')
+    .valid('en', 'tw', 'ga', 'da', 'ew')
     .default('en')
 });
 

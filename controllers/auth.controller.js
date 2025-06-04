@@ -230,7 +230,7 @@ export const requestPinReset = async (req, res) => {
 // Reset PIN
 export const resetPin = async (req, res) => {
   try {
-    const { phone, otp, newPin } = req.body;
+    const { newPin, confirmPin } = req.body;
 
     // Verify OTP
     const isValid = verifyOTPCode(phone, otp);
