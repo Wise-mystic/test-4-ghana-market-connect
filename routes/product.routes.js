@@ -11,6 +11,7 @@ import {
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validateRequest } from '../middlewares/validate.js';
 import { productSchema } from '../validators/product.schema.js';
+import upload from '../utils/imageUpload.js';
 
 const router = express.Router();
 
@@ -23,8 +24,16 @@ router.get('/:id', getProductById);
 router.use(authenticate);
 
 // Product management routes
-router.post('/', validateRequest(productSchema), createProduct);
-router.put('/:id', validateRequest(productSchema), updateProduct);
+router.post('/', 
+    validateRequest(productSchema), 
+    upload.array('images', 5), // Allow up to 5 images
+    createProduct
+);
+router.put('/:id', 
+    validateRequest(productSchema), 
+    upload.array('images', 5), // Allow up to 5 images
+    updateProduct
+);
 router.delete('/:id', deleteProduct);
 router.get('/user/:userId', getProductsByUser);
 

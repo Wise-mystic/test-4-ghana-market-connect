@@ -1,4 +1,5 @@
 import { Product } from '../models/product.model.js';
+import { validateProduct } from '../validators/product.validator.js';
 
 // Get all products
 export const getAllProducts = async (req, res) => {
@@ -44,8 +45,10 @@ export const getProductsByCategory = async (req, res) => {
 // Get single product
 export const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate('seller', 'name phone location');
+    const product = await Product.findOne({
+      _id: req.params.id,
+      isActive: true
+    }).populate('seller', 'name email');
 
     if (!product) {
       return res.status(404).json({
@@ -56,12 +59,13 @@ export const getProductById = async (req, res) => {
 
     res.json({
       success: true,
-      data: { product }
+      data: product
     });
   } catch (error) {
+    console.error('Error fetching product:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching product',
+      message: 'Failed to fetch product',
       error: error.message
     });
   }
@@ -70,20 +74,46 @@ export const getProductById = async (req, res) => {
 // Create new product
 export const createProduct = async (req, res) => {
   try {
-    const product = await Product.create({
+    // Validate product data
+    const { error } = validateProduct(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    // Check if files were uploaded
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one product image is required'
+      });
+    }
+
+    // Get Cloudinary URLs
+    const imageUrls = req.files.map(file => file.path);
+
+    // Create new product
+    const product = new Product({
       ...req.body,
-      seller: req.user.id
+      images: imageUrls,
+      seller: req.user._id
     });
+
+    // Save product
+    await product.save();
 
     res.status(201).json({
       success: true,
       message: 'Product created successfully',
-      data: { product }
+      data: product
     });
   } catch (error) {
+    console.error('Error creating product:', error);
     res.status(500).json({
       success: false,
-      message: 'Error creating product',
+      message: 'Failed to create product',
       error: error.message
     });
   }
@@ -92,38 +122,38 @@ export const createProduct = async (req, res) => {
 // Update product
 export const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findOne({
+      _id: req.params.id,
+      seller: req.user._id
+    });
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: 'Product not found or you are not authorized to update it'
       });
     }
 
-    // Check if user is the owner or an admin
-    if (product.seller.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to update this product'
-      });
+    // If new images are uploaded
+    if (req.files && req.files.length > 0) {
+      const newImageUrls = req.files.map(file => file.path);
+      req.body.images = newImageUrls;
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('seller', 'name phone location');
+    // Update product
+    Object.assign(product, req.body);
+    await product.save();
 
     res.json({
       success: true,
       message: 'Product updated successfully',
-      data: { product: updatedProduct }
+      data: product
     });
   } catch (error) {
+    console.error('Error updating product:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating product',
+      message: 'Failed to update product',
       error: error.message
     });
   }
@@ -132,33 +162,31 @@ export const updateProduct = async (req, res) => {
 // Delete product
 export const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findOne({
+      _id: req.params.id,
+      seller: req.user._id
+    });
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: 'Product not found or you are not authorized to delete it'
       });
     }
 
-    // Check if user is the owner or an admin
-    if (product.seller.toString() !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this product'
-      });
-    }
-
-    await product.deleteOne();
+    // Soft delete by setting isActive to false
+    product.isActive = false;
+    await product.save();
 
     res.json({
       success: true,
       message: 'Product deleted successfully'
     });
   } catch (error) {
+    console.error('Error deleting product:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting product',
+      message: 'Failed to delete product',
       error: error.message
     });
   }
@@ -179,6 +207,26 @@ export const getProductsByUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching user products',
+      error: error.message
+    });
+  }
+};
+
+export const getProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ isActive: true })
+      .populate('seller', 'name email')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: products
+    });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch products',
       error: error.message
     });
   }
