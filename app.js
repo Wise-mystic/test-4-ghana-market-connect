@@ -17,6 +17,7 @@ import adminRoutes from './routes/admin.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import otpRoutes from './routes/otpRoutes.js';
 import resetPinRoutes from './routes/resetPinRoutes.js';
+import routeUpload from './controllers/routeUpload.js';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +47,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/reset-pin', resetPinRoutes);
+app.use('/api/upload', routeUpload);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

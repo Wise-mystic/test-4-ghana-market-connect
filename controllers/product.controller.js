@@ -1,5 +1,6 @@
 import { Product } from '../models/product.model.js';
 import { validateProduct } from '../validators/product.validator.js';
+import { cloudinary } from '../config/cloudinary.js';
 
 // Get all products
 export const getAllProducts = async (req, res) => {
@@ -74,35 +75,53 @@ export const getProductById = async (req, res) => {
 // Create new product
 export const createProduct = async (req, res) => {
   try {
-    // Validate product data
-    const { error } = validateProduct(req.body);
-    if (error) {
+    console.log('=== Product Creation Started ===');
+    console.log('Raw request body:', req.body);
+    console.log('File received:', req.file);
+
+    // Check if file was uploaded
+    if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: error.details[0].message
+        message: 'Product image is required'
       });
     }
 
-    // Check if files were uploaded
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'At least one product image is required'
-      });
-    }
+    // Parse form data
+    const productData = {
+      name: req.body.name,
+      description: req.body.description,
+      image: req.file.path, // Use the Cloudinary URL directly
+      seller: req.user._id,
+      price: Number(req.body.price),
+      quantity: Number(req.body.quantity),
+      unit: req.body.unit?.toLowerCase().trim(),
+      category: req.body.category?.toLowerCase().trim(),
+      location: req.body.location,
+      stock: Number(req.body.stock),
+      condition: req.body.condition?.toLowerCase().trim(),
+      shipping: {
+        cost: Number(req.body['shipping.cost']),
+        method: req.body['shipping.method'],
+        estimatedDays: Number(req.body['shipping.estimatedDays'])
+      },
+      payment: {
+        methods: Array.isArray(req.body['payment.methods[]']) 
+          ? req.body['payment.methods[]'] 
+          : [req.body['payment.methods[]']],
+        currency: req.body['payment.currency']
+      }
+    };
 
-    // Get Cloudinary URLs
-    const imageUrls = req.files.map(file => file.path);
+    console.log('Parsed product data:', productData);
 
     // Create new product
-    const product = new Product({
-      ...req.body,
-      images: imageUrls,
-      seller: req.user._id
-    });
+    const product = new Product(productData);
 
     // Save product
     await product.save();
+
+    console.log('Product saved successfully:', product);
 
     res.status(201).json({
       success: true,
@@ -134,14 +153,37 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    // If new images are uploaded
-    if (req.files && req.files.length > 0) {
-      const newImageUrls = req.files.map(file => file.path);
-      req.body.images = newImageUrls;
+    // If new image is uploaded
+    if (req.file) {
+      // Upload new image to Cloudinary
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'winsward/products',
+        resource_type: 'auto'
+      });
+      req.body.image = uploadResult.secure_url;
     }
 
+    // Parse form data
+    const updateData = {
+      ...req.body,
+      price: Number(req.body.price),
+      quantity: Number(req.body.quantity),
+      stock: Number(req.body.stock),
+      shipping: {
+        cost: Number(req.body['shipping.cost']),
+        method: req.body['shipping.method'],
+        estimatedDays: Number(req.body['shipping.estimatedDays'])
+      },
+      payment: {
+        methods: Array.isArray(req.body['payment.methods[]']) 
+          ? req.body['payment.methods[]'] 
+          : [req.body['payment.methods[]']],
+        currency: req.body['payment.currency']
+      }
+    };
+
     // Update product
-    Object.assign(product, req.body);
+    Object.assign(product, updateData);
     await product.save();
 
     res.json({
