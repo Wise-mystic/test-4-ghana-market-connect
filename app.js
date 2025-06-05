@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { initializeSocket } from './services/socket.service.js';
 import { connectDB } from './config/index.js';
+import { languageMiddleware } from './middlewares/language.js';
 
 // Import routes
 import authRoutes from './routes/auth.routes.js';
@@ -30,6 +31,9 @@ initializeSocket(httpServer);
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Add language middleware before routes
+app.use(languageMiddleware);
 
 // Routes
 app.use('/api/auth', authRoutes);

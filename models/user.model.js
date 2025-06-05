@@ -1,6 +1,7 @@
 //user schema with role management
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { LANGUAGES, DEFAULT_LANGUAGE, getMessage } from '../config/languages.js';
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -40,8 +41,21 @@ const userSchema = new mongoose.Schema({
   },
   preferredLanguage: {
     type: String,
-    enum: ['en', 'tw', 'ga', 'da', 'ew'],
-    default: 'en'
+    enum: {
+      values: Object.values(LANGUAGES),
+      message: function(props) {
+        return getMessage(props.value || DEFAULT_LANGUAGE, 'selectLanguage');
+      }
+    },
+    default: DEFAULT_LANGUAGE,
+    validate: {
+      validator: function(v) {
+        return Object.values(LANGUAGES).includes(v);
+      },
+      message: function(props) {
+        return getMessage(props.value || DEFAULT_LANGUAGE, 'invalidLanguage');
+      }
+    }
   },
   isVerified: {
     type: Boolean,

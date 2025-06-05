@@ -1,5 +1,8 @@
 import Joi from 'joi';
 import { validateRequest } from '../middlewares/validate.js';
+import { LANGUAGES, DEFAULT_LANGUAGE } from '../config/languages.js';
+
+const validLanguages = Object.values(LANGUAGES);
 
 // Registration validation schema
 const registrationSchema = Joi.object({
@@ -41,8 +44,11 @@ const registrationSchema = Joi.object({
       'string.empty': 'Location is required'
     }),
   preferredLanguage: Joi.string()
-    .valid('en', 'tw', 'ga', 'da', 'ew')
-    .default('en')
+    .valid(...validLanguages)
+    .default(DEFAULT_LANGUAGE)
+    .messages({
+      'any.only': 'Please select a valid language preference. Available languages: ' + validLanguages.join(', ')
+    })
 });
 
 // Login validation schema

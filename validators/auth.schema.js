@@ -1,4 +1,7 @@
 import Joi from 'joi';
+import { LANGUAGES, DEFAULT_LANGUAGE } from '../config/languages.js';
+
+const validLanguages = Object.values(LANGUAGES);
 
 export const registerSchema = Joi.object({
   name: Joi.string().required().min(2).max(50),
@@ -6,7 +9,13 @@ export const registerSchema = Joi.object({
   pin: Joi.string().required().pattern(/^\d{6}$/),
   role: Joi.string().required().valid('farmer', 'market_woman', 'admin'),
   location: Joi.string().required(),
-  preferredLanguage: Joi.string().required().valid('en', 'tw', 'ga', 'ewe')
+  preferredLanguage: Joi.string()
+    .required()
+    .valid(...validLanguages)
+    .default(DEFAULT_LANGUAGE)
+    .messages({
+      'any.only': 'Please select a valid language preference. Available languages: ' + validLanguages.join(', ')
+    })
 });
 
 export const loginSchema = Joi.object({
