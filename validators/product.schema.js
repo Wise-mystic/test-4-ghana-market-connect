@@ -22,12 +22,11 @@ export const productSchema = Joi.object({
       'string.max': 'Description cannot exceed {#limit} characters'
     }),
   image: Joi.string()
-    .required()
+    .optional()
+    .allow('')
     .uri()
     .messages({
-      'string.empty': 'Product image is required',
-      'string.uri': 'Invalid image URL format',
-      'any.required': 'Product image is required'
+      'string.uri': 'Invalid image URL format'
     }),
   price: Joi.number()
     .required()

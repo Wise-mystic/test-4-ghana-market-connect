@@ -1,6 +1,8 @@
 import { Product } from '../models/product.model.js';
-import { validateProduct } from '../validators/product.validator.js';
-import { cloudinary } from '../config/cloudinary.js';
+// We no longer validate file upload here, validation for image URL is in schema
+// import { validateProduct } from '../validators/product.validator.js';
+// Cloudinary config is not needed directly in controller for this workflow
+// import { cloudinary } from '../config/cloudinary.js';
 
 // Get all products
 export const getAllProducts = async (req, res) => {
@@ -75,45 +77,26 @@ export const getProductById = async (req, res) => {
 // Create new product
 export const createProduct = async (req, res) => {
   try {
-    console.log('=== Product Creation Started ===');
+    console.log('=== Product Creation Started in Controller ===');
     console.log('Raw request body:', req.body);
-    console.log('File received:', req.file);
 
+    // req.file is no longer processed here, expecting image URL in body
     // Check if file was uploaded
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'Product image is required'
-      });
-    }
+    // if (!req.file) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'Product image is required'
+    //   });
+    // }
 
-    // Parse form data
+    // Parsed and validated data is in req.validatedData after validateRequest middleware
     const productData = {
-      name: req.body.name,
-      description: req.body.description,
-      image: req.file.path, // Use the Cloudinary URL directly
+      ...req.validatedData,
       seller: req.user._id,
-      price: Number(req.body.price),
-      quantity: Number(req.body.quantity),
-      unit: req.body.unit?.toLowerCase().trim(),
-      category: req.body.category?.toLowerCase().trim(),
-      location: req.body.location,
-      stock: Number(req.body.stock),
-      condition: req.body.condition?.toLowerCase().trim(),
-      shipping: {
-        cost: Number(req.body['shipping.cost']),
-        method: req.body['shipping.method'],
-        estimatedDays: Number(req.body['shipping.estimatedDays'])
-      },
-      payment: {
-        methods: Array.isArray(req.body['payment.methods[]']) 
-          ? req.body['payment.methods[]'] 
-          : [req.body['payment.methods[]']],
-        currency: req.body['payment.currency']
-      }
+      // image is now expected as a string URL in req.validatedData
     };
 
-    console.log('Parsed product data:', productData);
+    console.log('Final product data for creation:', productData);
 
     // Create new product
     const product = new Product(productData);
@@ -153,33 +136,19 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    // If new image is uploaded
-    if (req.file) {
-      // Upload new image to Cloudinary
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'winsward/products',
-        resource_type: 'auto'
-      });
-      req.body.image = uploadResult.secure_url;
-    }
+    // If new image is uploaded - this logic moves to the /upload route
+    // if (req.file) {
+    //   const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+    //     folder: 'winsward/products',
+    //     resource_type: 'auto'
+    //   });
+    //   req.body.image = uploadResult.secure_url;
+    // }
 
-    // Parse form data
+    // Parsed and validated data is in req.validatedData after validateRequest middleware
     const updateData = {
-      ...req.body,
-      price: Number(req.body.price),
-      quantity: Number(req.body.quantity),
-      stock: Number(req.body.stock),
-      shipping: {
-        cost: Number(req.body['shipping.cost']),
-        method: req.body['shipping.method'],
-        estimatedDays: Number(req.body['shipping.estimatedDays'])
-      },
-      payment: {
-        methods: Array.isArray(req.body['payment.methods[]']) 
-          ? req.body['payment.methods[]'] 
-          : [req.body['payment.methods[]']],
-        currency: req.body['payment.currency']
-      }
+      ...req.validatedData,
+      // image is now expected as a string URL in req.validatedData
     };
 
     // Update product

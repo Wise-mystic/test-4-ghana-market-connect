@@ -22,31 +22,23 @@ import routeUpload from './controllers/routeUpload.js';
 // Load environment variables
 dotenv.config();
 
+// Create Express app
 const app = express();
-const httpServer = createServer(app);
 
-// Initialize Socket.io
-initializeSocket(httpServer);
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Add language middleware before routes
 app.use(languageMiddleware);
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/lessons', lessonRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/forums', forumRoutes);
-app.use('/api/comments', commentRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/otp', otpRoutes);
-app.use('/api/reset-pin', resetPinRoutes);
 app.use('/api/upload', routeUpload);
 
 // Error handling middleware
@@ -55,27 +47,28 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
     message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    error: err.message
   });
 });
 
-// Connect to MongoDB and start server
-const startServer = async () => {
-  try {
-    await connectDB();
-    const PORT = process.env.PORT || 5000;
-    httpServer.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
 
-// Only start the server if this file is run directly
-if (process.env.NODE_ENV !== 'test') {
-  startServer();
-}
+// Create HTTP server
+const server = createServer(app);
+
+// Initialize Socket.IO
+initializeSocket(server);
+
+// Start server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
 export { app }; 

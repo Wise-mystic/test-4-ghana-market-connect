@@ -11,7 +11,10 @@ import {
 import { authenticate, authorize } from '../middlewares/auth.js';
 import { validateRequest } from '../middlewares/validate.js';
 import { productSchema } from '../validators/product.schema.js';
-import { upload, handleMulterError } from '../utils/imageUpload.js';
+// Import the upload middleware for parsing form-data text fields
+import { upload } from '../middlewares/multer.js';
+// We will no longer use the imageUpload middleware here, as image upload is separate
+// import { upload, handleMulterError } from '../utils/imageUpload.js';
 
 const router = express.Router();
 
@@ -24,16 +27,15 @@ router.get('/category/:category', getProductsByCategory);
 router.use(authenticate);
 
 // Product management routes
+// Use multer middleware here just to parse form-data text fields
 router.post('/', 
-    upload.single('image'),
-    handleMulterError,
+    upload.none(), // Use .none() to handle only text fields
     validateRequest(productSchema),
     createProduct
 );
 
 router.put('/:id', 
-    upload.single('image'),
-    handleMulterError,
+    upload.none(), // Use .none() to handle only text fields
     validateRequest(productSchema),
     updateProduct
 );
